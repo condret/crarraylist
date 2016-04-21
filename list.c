@@ -26,30 +26,52 @@ void cr_arraylist_free (CRArrayList *list)
 	free (list);
 }
 
-void cr_arraylist_add (CRArrayList *list, void *data)
+bool cr_arraylist_add (CRArrayList *list, void *data)
 {
 	void **ptr;
 	if (!list)
-		return;
-	if ((list->size*2) > list->storage_size)
-		if (ptr = realloc (list->data, list->storage_size * 2)) {
+		return false;
+	if ((list->size*2) > list->storage_size) {
+		if (ptr = realloc (list->data, sizeof(void *) * list->storage_size * 2)) {
 			list->data = ptr;
 			list->storage_size = list->storage_size * 2;
 		}
+	}
 	if (list->size == list->storage_size)
-		return;
+		return false;
 	list->data[list->size] = data;
 	list->size++;
+	return true;
 }
 
 void *cr_arraylist_take (CRArrayList *list)
 {
+	void *ret;
 	if (!list || !list->size)
 		return NULL;
 	list->size--;
 	if (list->size <= (list->storage_size / 4)) {
-		list->data = realloc (list->data, list->storage_size / 2);
+		list->data = realloc (list->data, sizeof(void *) * list->storage_size / 2);
 		list->storage_size = list->storage_size / 2;
 	}
-	return list->data[list->size];
+	ret = list->data[list->size];
+	list->data[list->size] = NULL;
+	return ret;
+}
+
+void *cr_arraylist_take_idx (CRArrayList *list, ut32 idx)
+{
+	void *ret;
+	if (!list || list->size <= idx)
+		return NULL;
+	if ((list->size - 1) == idx)
+		return cr_arraylist_take (list);
+	ret = list->data[idx];
+	if ((list->size - 1) <= (list->storage_size / 4)) {
+		list->data = realloc (list->data, sizeof(void *) * list->storage_size / 2);
+		list->storage_size = list->storage_size / 2;
+	}
+	memmove (list->data + idx, list->data + idx + 1, (list->size - idx) * sizeof (void *));
+	list->size--;
+	return ret;
 }
